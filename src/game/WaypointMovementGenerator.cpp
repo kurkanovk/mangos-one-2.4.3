@@ -338,6 +338,7 @@ void FlightPathMovementGenerator::Finalize(Player & player)
     i_destinationHolder.GetLocationNow(player.GetMap(), x, y, z);
     player.SetPosition(x, y, z, player.GetOrientation());
 
+    player.Anti__SetLastTeleTime(time(NULL));
     player.Unmount();
     player.RemoveFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_DISABLE_MOVE | UNIT_FLAG_TAXI_FLIGHT);
 

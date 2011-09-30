@@ -5442,6 +5442,10 @@ bool ChatHandler::HandleGMFlyCommand(char* args)
 
     WorldPacket data(12);
     data.SetOpcode(value ? SMSG_MOVE_SET_CAN_FLY : SMSG_MOVE_UNSET_CAN_FLY);
+    if (value)
+        ((Player*)(target))->SetCanFly(true);
+    else
+        ((Player*)(target))->SetCanFly(false);
     data << target->GetPackGUID();
     data << uint32(0);                                      // unknown
     target->SendMessageToSet(&data, true);
