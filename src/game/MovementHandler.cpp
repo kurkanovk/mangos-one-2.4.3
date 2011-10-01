@@ -452,7 +452,11 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
 
     // fall damage generation (ignore in flight case that can be triggered also at lags in moment teleportation to another map).
     if (opcode == MSG_MOVE_FALL_LAND && plMover && !plMover->IsTaxiFlying())
+    {
+        plMover->m_anti_justjumped = 0;
+        plMover->m_anti_jumpbase = 0;
         plMover->HandleFall(movementInfo);
+    }
 
     // ---- anti-cheat features -->>>
     uint32 Anti_TeleTimeDiff=plMover ? time(NULL) - plMover->Anti__GetLastTeleTime() : time(NULL);
@@ -546,37 +550,28 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
         float Anti__FloorZ  = GetPlayer()->GetTerrain()->GetHeight(GetPlayer()->GetPositionX(),GetPlayer()->GetPositionY(),GetPlayer()->GetPositionZ());
         float Anti__MapZ = ((Anti__FloorZ <= (INVALID_HEIGHT+5.0f)) ? Anti__GroundZ : Anti__FloorZ) + DIFF_OVERGROUND;
          
-        if(!GetPlayer()->CanFly() &&
-           !GetPlayer()->GetTerrain()->IsUnderWater(movementInfo.GetPos()->x, movementInfo.GetPos()->y, movementInfo.GetPos()->z-7.0f) &&
-           Anti__MapZ < GetPlayer()->GetPositionZ() && Anti__MapZ > (INVALID_HEIGHT+DIFF_OVERGROUND + 5.0f))
-        {
-            static const float DIFF_AIRJUMP=25.0f; // 25 is realy high, but to many false positives...
-             
-            // Air-Jump-Detection definitively needs a better way to be detected...
-            if((movementInfo.GetMovementFlags() & (MOVEFLAG_CAN_FLY | MOVEFLAG_FLYING | MOVEFLAG_ROOT)) != 0) // Fly Hack
-            {
-              // Fix Aura 55164 by KAPATEJIb
-              if (!GetPlayer()->HasAura(55164))
-                if(sWorld.GetMvAnticheatFlyCheck())
-                  Anti__CheatOccurred(CurTime,"Fly hack",
-                                    ((uint8)(GetPlayer()->HasAuraType(SPELL_AURA_FLY))) +
-                                    /*((uint8)(GetPlayer()->HasAuraType(SPELL_AURA_MOD_INCREASE_FLIGHT_SPEED))*2),*/
-                                    ((uint8)(GetPlayer()->HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED))*2),
-                                    NULL,GetPlayer()->GetPositionZ()-Anti__MapZ);
-            }
-             
-            // Need a better way to do that - currently a lot of fake alarms
-            else if((Anti__MapZ+DIFF_AIRJUMP < GetPlayer()->GetPositionZ() &&
-                    (movementInfo.GetMovementFlags() & (MOVEFLAG_FALLINGFAR /*| MOVEMENTFLAG_UNK4*/))==0) ||
-                    (Anti__MapZ < GetPlayer()->GetPositionZ() && 
-                     opcode==MSG_MOVE_JUMP))
-            {
-                 if(sWorld.GetMvAnticheatJumpCheck())
-                   Anti__CheatOccurred(CurTime,"Possible Air Jump Hack",0.0f,LookupOpcodeName(opcode),0.0f,movementInfo.GetMovementFlags());
-            }
+
+        //AntiGravitation (thanks to Meekro)
+        float JumpHeight = plMover->m_anti_jumpbase - movementInfo.GetPos()->z;
+        if ((plMover->m_anti_jumpbase != 0) && !(plMover->m_movementInfo.HasMovementFlag(MOVEFLAG_SWIMMING) || plMover->m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING) || plMover->m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING2))
+                    && (JumpHeight < -2.3f)){
+                         Anti__CheatOccurred(CurTime,"Gravitation Jump",0.0f,LookupOpcodeName(opcode),0.0f,movementInfo.GetMovementFlags());
         }
- 
-        
+        // Mod part. Air jump
+        if (opcode == MSG_MOVE_JUMP && !plMover->IsInWater()){
+            if (plMover->m_anti_justjumped >= 1)
+             Anti__CheatOccurred(CurTime,"Air Jump",0.0f,LookupOpcodeName(opcode),0.0f,movementInfo.GetMovementFlags());
+            else 
+             plMover->m_anti_justjumped += 1;
+        } else if (plMover->IsInWater()) {
+             plMover->m_anti_justjumped = 0;
+        }
+
+        if ((movementInfo.HasMovementFlag(MOVEFLAG_FLYING) || plMover->m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING2)) && !plMover->CanFly() && !plMover->isGameMaster() && (opcode!=201))// && !(plMover->HasAuraType(SPELL_AURA_FLY) || plMover->HasAuraType(SPELL_AURA_MOD_INCREASE_FLIGHT_SPEED)))
+        {
+            Anti__CheatOccurred(CurTime,"Fly hack",0.0f,LookupOpcodeName(opcode),0.0f,movementInfo.GetMovementFlags());
+        }
+
         /*if(Anti__FloorZ < -199900.0f && Anti__GroundZ >= -199900.0f &&
            GetPlayer()->GetPositionZ()+5.0f < Anti__GroundZ)
         {

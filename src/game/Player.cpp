@@ -504,6 +504,9 @@ Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(this), m
     m_anti_alarmcount = 0;       //alarm counter
     m_anti_TeleTime = 0;
     m_CanFly=false;
+
+	m_anti_justjumped = 0;       //jump already began
+    m_anti_jumpbase = 0;         //AntiGravitaion
     /////////////////////////////////
 
     m_mailsUpdated = false;
