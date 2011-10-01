@@ -483,6 +483,7 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
         float delta_y = GetPlayer()->GetPositionY() - movementInfo.GetPos()->y;
         float delta_z = GetPlayer()->GetPositionZ() - movementInfo.GetPos()->z;
         float delta = sqrt(delta_x * delta_x + delta_y * delta_y); // Len of movement-vector via Pythagoras (a^2+b^2=Len^2)
+        float real_delta = delta_x * delta_x + delta_y * delta_y;
         float tg_z = 0.0f; //tangens
         float delta_t = WorldTimer::getMSTimeDiff(GetPlayer()->m_anti_lastmovetime,CurTime);
          
