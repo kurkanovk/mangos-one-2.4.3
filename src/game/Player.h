@@ -2333,6 +2333,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         bool m_CanFly;
         uint32 m_anti_justjumped;       //Jump already began, anti air jump check
         float  m_anti_jumpbase;         //AntiGravitation
+		bool   blink_test;
 
         // Transports
         Transport * m_transport;

@@ -551,6 +551,21 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
         float Anti__MapZ = ((Anti__FloorZ <= (INVALID_HEIGHT+5.0f)) ? Anti__GroundZ : Anti__FloorZ) + DIFF_OVERGROUND;
          
 
+        if (opcode == MSG_MOVE_STOP)
+        {
+             plMover->m_anti_jumpbase = 0;
+             plMover->m_anti_justjumped = 0;
+             if (plMover->blink_test && (abs(delta_x)<0.001f) && (abs(delta_y)<0.001f) && (abs(delta_z)<0.001f))
+              Anti__CheatOccurred(CurTime,"Blink cheat",0.0f,LookupOpcodeName(opcode),0.0f,movementInfo.GetMovementFlags());
+        }
+
+         if (opcode == MSG_MOVE_START_FORWARD && (movementInfo.GetJumpInfo().sinAngle==0.f) &&
+            (movementInfo.GetJumpInfo().cosAngle==0.f) && (movementInfo.GetJumpInfo().velocity==0.f) 
+            && (movementInfo.GetJumpInfo().xyspeed==0.f) && (real_delta>0.001f || abs(delta_z)>0.001f))
+             plMover->blink_test = true;
+         else 
+             plMover->blink_test = false;
+
         //AntiGravitation (thanks to Meekro)
         float JumpHeight = plMover->m_anti_jumpbase - movementInfo.GetPos()->z;
         if ((plMover->m_anti_jumpbase != 0) && !(plMover->m_movementInfo.HasMovementFlag(MOVEFLAG_SWIMMING) || plMover->m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING) || plMover->m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING2))
