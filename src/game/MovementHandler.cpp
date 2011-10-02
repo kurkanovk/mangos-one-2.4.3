@@ -491,9 +491,7 @@ if(plMover)
         else move_type = plMover->HasMovementFlag(MOVEFLAG_BACKWARD) ? MOVE_SWIM_BACK : MOVE_RUN;
 
         float allowed_delta = 0;
-          if (!plMover->m_anti_last_hspeed[move_type])
-               plMover->m_anti_last_hspeed[move_type] = plMover->GetSpeed(move_type);
-         float current_speed = plMover->m_anti_last_hspeed[move_type];
+        float current_speed = plMover->GetSpeed(move_type);
         float delta_x = GetPlayer()->GetPositionX() - movementInfo.GetPos()->x;
         float delta_y = GetPlayer()->GetPositionY() - movementInfo.GetPos()->y;
         float delta_z = GetPlayer()->GetPositionZ() - movementInfo.GetPos()->z;
@@ -514,16 +512,14 @@ if(plMover)
             tg_z = ((delta !=0.0f) && (delta_z > 0.0f)) ? (atan((delta_z*delta_z) / delta) * 180.0f / M_PI) : 0.0f;
         }
 
-float time_delta = (timedelta < 1500) ? (float)timedelta/1000 : 1.5f;
-float dx, dy;
-        dx = plMover->m_movementInfo.GetJumpInfo().xyspeed*plMover->m_movementInfo.GetJumpInfo().cosAngle*time_delta;
-        dx = dx*dx;
-        dy = plMover->m_movementInfo.GetJumpInfo().xyspeed*plMover->m_movementInfo.GetJumpInfo().sinAngle*time_delta;
-        dy = dy*dy;
-                allowed_delta = dx+dy;
-                if (!allowed_delta)
-                        allowed_delta = current_speed*current_speed*time_delta*time_delta;
-        allowed_delta = allowed_delta + 2;
+        float time_delta = (timedelta < 1500) ? (float)timedelta/1000 : 1.5f;
+
+        if (current_speed < GetPlayer()->m_anti_last_hspeed)
+            allowed_delta = GetPlayer()->m_anti_last_hspeed;
+        else 
+			allowed_delta = current_speed;
+        allowed_delta = allowed_delta * time_delta;
+        allowed_delta = allowed_delta * allowed_delta + 2;
 
         //antiOFF fall-damage, MOVEMENTFLAG_UNK4 seted by client if player try movement when falling and unset in this case the MOVEMENTFLAG_FALLING flag. 
         if((!GetPlayer()->CanFly() && GetPlayer()->m_anti_BeginFallZ == INVALID_HEIGHT) &&
@@ -570,14 +566,12 @@ float dx, dy;
             if(sWorld.GetMvAnticheatMountainCheck())
                  Anti__CheatOccurred(CurTime,"Mountain hack",tg_z,NULL,delta,delta_z);
         }
-        
-        
+
         static const float DIFF_OVERGROUND = 10.0f;
         float Anti__GroundZ = GetPlayer()->GetTerrain()->GetHeight(GetPlayer()->GetPositionX(),GetPlayer()->GetPositionY(),MAX_HEIGHT);
         float Anti__FloorZ  = GetPlayer()->GetTerrain()->GetHeight(GetPlayer()->GetPositionX(),GetPlayer()->GetPositionY(),GetPlayer()->GetPositionZ());
         float Anti__MapZ = ((Anti__FloorZ <= (INVALID_HEIGHT+5.0f)) ? Anti__GroundZ : Anti__FloorZ) + DIFF_OVERGROUND;
          
-
         if (opcode == MSG_MOVE_STOP)
         {
              plMover->m_anti_jumpbase = 0;
@@ -609,9 +603,14 @@ float dx, dy;
              plMover->m_anti_justjumped = 0;
         }
 
-        if ((real_delta>allowed_delta) && (opcode!=MSG_MOVE_FALL_LAND))
+        if (real_delta > allowed_delta)
         {
             Anti__CheatOccurred(CurTime,"Speed hack",0.0f,LookupOpcodeName(opcode),0.0f,movementInfo.GetMovementFlags());
+        }
+
+        if ((real_delta>4900.0f) && !(real_delta < allowed_delta))
+        {
+            Anti__CheatOccurred(CurTime,"Teleport",0.0f,LookupOpcodeName(opcode),0.0f,movementInfo.GetMovementFlags());
         }
 
         if ((movementInfo.HasMovementFlag(MOVEFLAG_FLYING) || plMover->m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING2)) && !plMover->CanFly() && !plMover->isGameMaster() && (opcode!=201))// && !(plMover->HasAuraType(SPELL_AURA_FLY) || plMover->HasAuraType(SPELL_AURA_MOD_INCREASE_FLIGHT_SPEED)))
